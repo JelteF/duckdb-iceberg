@@ -58,6 +58,7 @@ public:
 
 private:
 	void RequireConfigurable() const DUCKDB_REQUIRES(lock);
+	void RequireRestrictablePlanning() const DUCKDB_REQUIRES(lock);
 	bool configuration_frozen DUCKDB_GUARDED_BY(lock) = false;
 	unique_ptr<IcebergManifestStore> manifest_store DUCKDB_GUARDED_BY(lock);
 	//! Destroy the provider before the manifest store it may reference.

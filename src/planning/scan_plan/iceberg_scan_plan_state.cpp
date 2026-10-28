@@ -36,13 +36,30 @@ void IcebergScanPlanState::SetTable(IcebergTableSchemaVersion &table) {
 	configuration.table = table;
 }
 
+//! Unlike the scan identity, these two settings only restrict how the provider gets selected, so they can still be
+//! added once the configuration is frozen. A host can legitimately estimate cardinality (which selects the provider)
+//! before the post-bind hook adds them, e.g. when a scan is bound separately from the query that ends up using it.
+//! Only a server-side plan that was already made without them conflicts: a client-side plan reads the manifests,
+//! so it satisfies both, and a provider that does not exist yet will pick them up when it gets created.
+void IcebergScanPlanState::RequireRestrictablePlanning() const {
+	if (scan_plan_provider && !manifest_store) {
+		throw InternalException("Cannot restrict Iceberg scan planning after a server-side scan plan was created");
+	}
+}
+
 void IcebergScanPlanState::DisableServerSidePlanning() {
-	RequireConfigurable();
+	if (!configuration.server_side_planning_enabled) {
+		return;
+	}
+	RequireRestrictablePlanning();
 	configuration.server_side_planning_enabled = false;
 }
 
 void IcebergScanPlanState::RequireRowIds() {
-	RequireConfigurable();
+	if (configuration.row_ids_required) {
+		return;
+	}
+	RequireRestrictablePlanning();
 	configuration.row_ids_required = true;
 }
 
